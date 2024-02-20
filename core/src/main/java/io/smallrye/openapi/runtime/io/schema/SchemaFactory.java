@@ -140,6 +140,13 @@ public class SchemaFactory {
             return schema;
         }
 
+        String ref = readAttr(context, annotation, OpenApiConstants.REF, defaults);
+        if (ref != null) {
+            schema.setRef(ref);
+            // If the annotation sets a ref, ignore any defaults passed in
+            defaults = Collections.emptyMap();
+        }
+
         schema.setNot(SchemaFactory.<Type, Schema> readAttr(context, annotation, SchemaConstant.PROP_NOT,
                 types -> readClassSchema(context, types, true), defaults));
         schema.setOneOf(SchemaFactory.<Type[], List<Schema>> readAttr(context, annotation, SchemaConstant.PROP_ONE_OF,
@@ -151,10 +158,24 @@ public class SchemaFactory {
         schema.setTitle(readAttr(context, annotation, SchemaConstant.PROP_TITLE, defaults));
         schema.setMultipleOf(SchemaFactory.<Double, BigDecimal> readAttr(context, annotation, SchemaConstant.PROP_MULTIPLE_OF,
                 BigDecimal::valueOf, defaults));
-        schema.setMaximum(SchemaFactory.readAttr(context, annotation, SchemaConstant.PROP_MAXIMUM,
-                SchemaFactory::tolerantParseBigDecimal, defaults));
-        schema.setMinimum(SchemaFactory.readAttr(context, annotation, SchemaConstant.PROP_MINIMUM,
-                SchemaFactory::tolerantParseBigDecimal, defaults));
+        BigDecimal maximum = SchemaFactory.readAttr(context, annotation, SchemaConstant.PROP_MAXIMUM,
+                SchemaFactory::tolerantParseBigDecimal, defaults);
+        BigDecimal minimum = SchemaFactory.readAttr(context, annotation, SchemaConstant.PROP_MINIMUM,
+                SchemaFactory::tolerantParseBigDecimal, defaults);
+        if (maximum != null) {
+            if (Boolean.TRUE.equals(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MAXIMUM, defaults))) {
+                schema.setExclusiveMaximum(maximum);
+            } else {
+                schema.setMaximum(maximum);
+            }
+        }
+        if (minimum != null) {
+            if (Boolean.TRUE.equals(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MINIMUM, defaults))) {
+                schema.setExclusiveMinimum(minimum);
+            } else {
+                schema.setMinimum(minimum);
+            }
+        }
         schema.setExclusiveMaximum(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MAXIMUM, defaults));
         schema.setExclusiveMinimum(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MINIMUM, defaults));
         schema.setMaxLength(readAttr(context, annotation, SchemaConstant.PROP_MAX_LENGTH, defaults));
@@ -171,10 +192,11 @@ public class SchemaFactory {
         schema.setWriteOnly(readAttr(context, annotation, SchemaConstant.PROP_WRITE_ONLY, defaults));
         schema.setExternalDocs(context.io().externalDocumentation().read(annotation.value(SchemaConstant.PROP_EXTERNAL_DOCS)));
         schema.setDeprecated(readAttr(context, annotation, SchemaConstant.PROP_DEPRECATED, defaults));
-        schema.setType(readSchemaType(context, annotation, schema, defaults));
-        schema.setExample(parseSchemaAttr(context, annotation, SchemaConstant.PROP_EXAMPLE, defaults, schema.getType()));
+        final SchemaType type = readSchemaType(context, annotation, schema, defaults);
+        schema.setType(type);
+        schema.setExamples(wrapInList(parseSchemaAttr(context, annotation, SchemaConstant.PROP_EXAMPLE, defaults, type)));
         schema.setDefaultValue(
-                parseSchemaAttr(context, annotation, SchemaConstant.PROP_DEFAULT_VALUE, defaults, schema.getType()));
+                parseSchemaAttr(context, annotation, SchemaConstant.PROP_DEFAULT_VALUE, defaults, type));
         schema.setDiscriminator(context.io().schemas().discriminator().read(annotation));
         schema.setMaxItems(readAttr(context, annotation, SchemaConstant.PROP_MAX_ITEMS, defaults));
         schema.setMinItems(readAttr(context, annotation, SchemaConstant.PROP_MIN_ITEMS, defaults));
@@ -200,15 +222,13 @@ public class SchemaFactory {
 
         if (additionalProperties != null) {
             if (additionalProperties.name().equals(SchemaConstant.DOTNAME_TRUE_SCHEMA)) {
-                schema.setAdditionalPropertiesBoolean(Boolean.TRUE);
+                schema.setAdditionalPropertiesSchema(new SchemaImpl().booleanSchema(Boolean.TRUE));
             } else if (additionalProperties.name().equals(SchemaConstant.DOTNAME_FALSE_SCHEMA)) {
-                schema.setAdditionalPropertiesBoolean(Boolean.FALSE);
+                schema.setAdditionalPropertiesSchema(new SchemaImpl().booleanSchema(Boolean.FALSE));
             } else {
                 schema.setAdditionalPropertiesSchema(readClassSchema(context, additionalProperties, true));
             }
         }
-
-        final Schema.SchemaType type = schema.getType();
 
         List<Object> enumeration = readAttr(context, annotation, SchemaConstant.PROP_ENUMERATION, (Object[] values) -> {
             List<Object> parsed = new ArrayList<>(values.length);
@@ -258,7 +278,7 @@ public class SchemaFactory {
             implSchema = readClassSchema(context, type, false);
         }
 
-        if (schema.getType() == Schema.SchemaType.ARRAY && implSchema != null) {
+        if (schema.getType() != null && schema.getType().contains(Schema.SchemaType.ARRAY) && implSchema != null) {
             // If the @Schema annotation indicates an array type, then use the Schema
             // generated from the implementation Class as the "items" for the array.
             schema.setItems(implSchema);
@@ -401,7 +421,17 @@ public class SchemaFactory {
     static SchemaType readSchemaType(AnnotationScannerContext context, AnnotationInstance annotation, Schema schema,
             Map<String, Object> defaults) {
         SchemaType type = readAttr(context, annotation, SchemaConstant.PROP_TYPE, SchemaFactory::parseSchemaType, defaults);
-        return type != null ? type : schema.getType();
+        if (type != null) {
+            return type;
+        }
+        List<SchemaType> types = schema.getType();
+        if (types != null) {
+            return types.stream()
+                    .filter(t -> t != SchemaType.NULL)
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
     }
 
     /**
@@ -416,6 +446,14 @@ public class SchemaFactory {
         } catch (IllegalArgumentException e) {
             // This will only occur for `org.eclipse.microprofile.openapi.annotations.enums.SchemaType#DEFAULT`.
             return null;
+        }
+    }
+
+    static <T> List<T> wrapInList(T value) {
+        if (value == null) {
+            return null;
+        } else {
+            return Collections.singletonList(value);
         }
     }
 

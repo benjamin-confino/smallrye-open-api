@@ -4,13 +4,16 @@ import static io.smallrye.openapi.api.constants.JaxbConstants.PROP_NAME;
 import static io.smallrye.openapi.api.constants.JaxbConstants.XML_ATTRIBUTE;
 import static io.smallrye.openapi.api.constants.JaxbConstants.XML_ELEMENT;
 import static io.smallrye.openapi.api.constants.JaxbConstants.XML_WRAPPERELEMENT;
+import static java.util.Collections.singletonList;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.eclipse.microprofile.openapi.models.media.Schema;
@@ -224,8 +227,9 @@ public class AnnotationTargetProcessor implements RequirementHandler {
             } else {
                 typeProcessor.pushObjectStackInput();
                 Schema registeredTypeSchema;
+                List<Schema.SchemaType> typeList = typeSchema.getType();
 
-                if (typeSchema.getType() != SchemaType.ARRAY) {
+                if (typeList != null && !typeList.contains(SchemaType.ARRAY)) {
                     // Only register a reference to the type schema. The full schema will be added by subsequent
                     // items on the stack (if not already present in the registry).
                     registeredTypeSchema = schemaRegistry.registerReference(registrationType, context.getJsonViews(),
@@ -236,14 +240,31 @@ public class AnnotationTargetProcessor implements RequirementHandler {
                             typeResolver, typeSchema);
                 }
 
-                if (fieldSchema.getAllOf() == null && (fieldAssertionsOverrideType(fieldSchema, typeSchema)
+                // Field schema may be replaced by a reference, so check now if it permits null
+                boolean fieldSchemaNullable = isNullable(fieldSchema);
+
+                if (fieldSchema.getRef() == null && (fieldAssertionsOverrideType(fieldSchema, typeSchema)
                         || fieldSpecifiesAnnotation(fieldSchema))) {
                     // Field declaration overrides a schema annotation (non-validating), add referenced type to `allOf` if not user-provided
                     TypeUtil.clearMatchingDefaultAttributes(fieldSchema, typeSchema);
-                    fieldSchema.addAllOf(registeredTypeSchema);
+                    fieldSchema.setRef(registeredTypeSchema.getRef());
                     SchemaImpl.addTypeObserver(typeSchema, fieldSchema);
                 } else {
                     fieldSchema = registeredTypeSchema; // Reference to the type schema
+                }
+
+                // If the field should allow null but the type schema doesn't, use anyOf to allow null
+                if (fieldSchemaNullable && !isNullable(typeSchema)) {
+                    Schema nullSchema = new SchemaImpl().type(singletonList(Schema.SchemaType.NULL));
+                    // Move reference to type into its own subschema
+                    Schema refSchema = new SchemaImpl().ref(fieldSchema.getRef());
+                    fieldSchema.setRef(null);
+                    if (fieldSchema.getAnyOf() == null) {
+                        fieldSchema.addAnyOf(refSchema).addAnyOf(nullSchema);
+                    } else {
+                        Schema anyOfSchema = new SchemaImpl().addAnyOf(refSchema).addAnyOf(nullSchema);
+                        fieldSchema.addAllOf(anyOfSchema);
+                    }
                 }
             }
         } else if (!JandexUtil.isRef(schemaAnnotation)) {
@@ -260,6 +281,11 @@ public class AnnotationTargetProcessor implements RequirementHandler {
         parentSchema.addProperty(propertyKey, fieldSchema);
 
         return fieldSchema;
+    }
+
+    private boolean isNullable(Schema schema) {
+        List<Schema.SchemaType> types = schema.getType();
+        return types != null && types.contains(Schema.SchemaType.NULL);
     }
 
     private void processFieldAnnotations(Schema fieldSchema, TypeResolver typeResolver) {
@@ -392,7 +418,6 @@ public class AnnotationTargetProcessor implements RequirementHandler {
      * @see https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.7.6
      */
     private static final List<Function<Schema, Object>> SCHEMA_ASSERTION_PROVIDERS = Arrays.asList(
-            Schema::getAdditionalPropertiesBoolean,
             Schema::getAdditionalPropertiesSchema,
             Schema::getAllOf,
             Schema::getAnyOf,
@@ -412,15 +437,24 @@ public class AnnotationTargetProcessor implements RequirementHandler {
             Schema::getMinProperties,
             Schema::getMultipleOf,
             Schema::getNot,
-            Schema::getNullable,
             Schema::getOneOf,
             Schema::getPattern,
             Schema::getProperties,
             Schema::getRef,
             Schema::getRequired,
-            //Schema::getType,
+            //            AnnotationTargetProcessor::getTypeSetWithoutNull,
             Schema::getUniqueItems,
             Schema::getXml);
+
+    private static Set<Schema.SchemaType> getTypeSetWithoutNull(Schema schema) {
+        List<Schema.SchemaType> typeList = schema.getType();
+        HashSet<Schema.SchemaType> result = null;
+        if (typeList != null) {
+            result = new HashSet<>(schema.getType());
+            result.remove(Schema.SchemaType.NULL);
+        }
+        return result;
+    }
 
     /**
      * @see https://json-schema.org/draft/2020-12/json-schema-core.html#annotations
@@ -430,7 +464,7 @@ public class AnnotationTargetProcessor implements RequirementHandler {
             Schema::getDeprecated,
             Schema::getDescription,
             Schema::getExample,
-            Schema::getExtensions,
+            //            Schema::getExtensions,
             Schema::getExternalDocs,
             Schema::getReadOnly,
             Schema::getTitle,

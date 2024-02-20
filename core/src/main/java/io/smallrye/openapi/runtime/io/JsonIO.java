@@ -42,6 +42,10 @@ public interface JsonIO<V, A extends V, O extends V, AB, OB> {
 
     String asString(V value);
 
+    boolean isBoolean(V value);
+
+    Boolean asBoolean(V value);
+
     default String getString(V object, String key) {
         if (isObject(object)) {
             return getJsonString(asObject(object), key);
@@ -95,6 +99,8 @@ public interface JsonIO<V, A extends V, O extends V, AB, OB> {
     }
 
     Object fromJson(V object);
+
+    <T> T fromJson(V object, Class<T> desiredType);
 
     V toJson(Object object, V defaultValue);
 

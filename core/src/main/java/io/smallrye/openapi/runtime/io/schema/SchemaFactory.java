@@ -176,8 +176,6 @@ public class SchemaFactory {
                 schema.setMinimum(minimum);
             }
         }
-        schema.setExclusiveMaximum(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MAXIMUM, defaults));
-        schema.setExclusiveMinimum(readAttr(context, annotation, SchemaConstant.PROP_EXCLUSIVE_MINIMUM, defaults));
         schema.setMaxLength(readAttr(context, annotation, SchemaConstant.PROP_MAX_LENGTH, defaults));
         schema.setMinLength(readAttr(context, annotation, SchemaConstant.PROP_MIN_LENGTH, defaults));
         schema.setPattern(readAttr(context, annotation, SchemaConstant.PROP_PATTERN, defaults));
@@ -187,13 +185,14 @@ public class SchemaFactory {
         schema.setDescription(readAttr(context, annotation, SchemaConstant.PROP_DESCRIPTION, defaults));
         schema.setFormat(readAttr(context, annotation, SchemaConstant.PROP_FORMAT, defaults));
         schema.setRef(readAttr(context, annotation, OpenApiConstants.REF, defaults));
-        schema.setNullable(readAttr(context, annotation, SchemaConstant.PROP_NULLABLE, defaults));
+        SchemaImpl.setNullable(schema, readAttr(context, annotation, SchemaConstant.PROP_NULLABLE, defaults));
         schema.setReadOnly(readAttr(context, annotation, SchemaConstant.PROP_READ_ONLY, defaults));
         schema.setWriteOnly(readAttr(context, annotation, SchemaConstant.PROP_WRITE_ONLY, defaults));
         schema.setExternalDocs(context.io().externalDocumentation().read(annotation.value(SchemaConstant.PROP_EXTERNAL_DOCS)));
         schema.setDeprecated(readAttr(context, annotation, SchemaConstant.PROP_DEPRECATED, defaults));
+
         final SchemaType type = readSchemaType(context, annotation, schema, defaults);
-        schema.setType(type);
+        SchemaImpl.setType(schema, type);
         schema.setExamples(wrapInList(parseSchemaAttr(context, annotation, SchemaConstant.PROP_EXAMPLE, defaults, type)));
         schema.setDefaultValue(
                 parseSchemaAttr(context, annotation, SchemaConstant.PROP_DEFAULT_VALUE, defaults, type));
@@ -471,7 +470,7 @@ public class SchemaFactory {
         }
         Schema schema;
         if (type.kind() == Type.Kind.ARRAY) {
-            schema = new SchemaImpl().type(SchemaType.ARRAY);
+            schema = new SchemaImpl().addType(SchemaType.ARRAY);
             ArrayType array = type.asArrayType();
             int dimensions = array.dimensions();
             Type componentType = array.component();
@@ -540,7 +539,7 @@ public class SchemaFactory {
             TypeUtil.applyTypeAttributes(type, schema);
             schema = schemaRegistration(context, type, schema);
         } else if (type.kind() == Type.Kind.ARRAY) {
-            schema = new SchemaImpl().type(SchemaType.ARRAY);
+            schema = new SchemaImpl().addType(SchemaType.ARRAY);
             ArrayType array = type.asArrayType();
             int dimensions = array.dimensions();
             Type componentType = array.component();
@@ -603,7 +602,7 @@ public class SchemaFactory {
 
             enumSchema = readSchema(context, enumSchema, schemaAnnotation, enumKlazz, defaults);
         } else {
-            enumSchema.setType(SchemaType.STRING);
+            enumSchema.addType(SchemaType.STRING);
             enumSchema.setEnumeration(enumeration);
         }
 
@@ -727,7 +726,7 @@ public class SchemaFactory {
             List<AnnotationScannerExtension> extensions) {
         if (TypeUtil.isA(context, type, MutinyConstants.MULTI_TYPE)) {
             // Treat as an Array
-            Schema schema = new SchemaImpl().type(SchemaType.ARRAY);
+            Schema schema = new SchemaImpl().addType(SchemaType.ARRAY);
             Type componentType = type.asParameterizedType().arguments().get(0);
 
             // Recurse using the type of the array elements

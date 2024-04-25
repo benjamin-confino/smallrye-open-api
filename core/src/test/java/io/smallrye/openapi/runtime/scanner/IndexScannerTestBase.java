@@ -44,7 +44,7 @@ import io.smallrye.openapi.runtime.io.OpenApiSerializer;
 
 public class IndexScannerTestBase {
 
-    private static final Logger LOG = Logger.getLogger(IndexScannerTestBase.class);
+    protected static final Logger LOG = Logger.getLogger(IndexScannerTestBase.class);
     static final Pattern PATTERN_CLASS_DOTNAME_COMPONENTIZE = Pattern.compile("([\\.$]|$)");
 
     protected static String pathOf(Class<?> clazz) {
@@ -114,13 +114,13 @@ public class IndexScannerTestBase {
     }
 
     public static void printToConsole(String entityName, Schema schema) throws IOException {
-        // Remember to set debug level logging.
-        LOG.debug(schemaToString(entityName, schema));
+        // Remember to set debug level logging. TODO Don't deliver this
+        LOG.error(schemaToString(entityName, schema));
     }
 
     public static void printToConsole(OpenAPI oai) throws IOException {
-        // Remember to set debug level logging.
-        LOG.debug(OpenApiSerializer.serialize(oai, Format.JSON));
+        // Remember to set debug level logging.TODO Don't deliver this
+        LOG.error(OpenApiSerializer.serialize(oai, Format.JSON));
     }
 
     public static void verifyMethodAndParamRefsPresent(OpenAPI oai) {

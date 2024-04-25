@@ -197,6 +197,9 @@ public class GenerateSchemaMojo extends AbstractMojo {
     @Parameter(property = "infoDescription")
     private String infoDescription;
 
+    @Parameter(property = "infoSummary")
+    private String infoSummary;
+
     @Parameter(property = "infoTermsOfService")
     private String infoTermsOfService;
 
@@ -439,6 +442,7 @@ public class GenerateSchemaMojo extends AbstractMojo {
         addToPropertyMap(cp, OpenApiConstants.INFO_VERSION, infoVersion);
         addToPropertyMap(cp, OpenApiConstants.INFO_DESCRIPTION, infoDescription);
         addToPropertyMap(cp, OpenApiConstants.INFO_TERMS, infoTermsOfService);
+        addToPropertyMap(cp, OpenApiConstants.INFO_SUMMARY, infoSummary);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_EMAIL, infoContactEmail);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_NAME, infoContactName);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_URL, infoContactUrl);

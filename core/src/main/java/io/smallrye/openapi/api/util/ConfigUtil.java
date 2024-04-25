@@ -55,6 +55,9 @@ public class ConfigUtil {
         if (config.getInfoTermsOfService() != null) {
             oai.getInfo().setTermsOfService(config.getInfoTermsOfService());
         }
+        if (config.getInfoSummary() != null) {
+            oai.getInfo().setSummary(config.getInfoSummary());
+        }
 
         // Contact
         if (oai.getInfo().getContact() == null && (config.getInfoContactEmail() != null || config.getInfoContactName() != null

@@ -1,3 +1,4 @@
+//TODO - ask if this should have a copyright statement
 package io.smallrye.openapi.api;
 
 import java.util.ArrayList;
@@ -176,6 +177,10 @@ public interface OpenApiConfig {
 
     default String getInfoTermsOfService() {
         return getConfigValue(OpenApiConstants.INFO_TERMS, String.class, () -> null);
+    }
+
+    default String getInfoSummary() {
+        return getConfigValue(OpenApiConstants.INFO_SUMMARY, String.class, () -> null);
     }
 
     default String getInfoContactEmail() {

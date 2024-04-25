@@ -51,6 +51,7 @@ class Configs implements SmallryeOpenApiProperties {
     final Property<String> infoVersion;
     final Property<String> infoDescription;
     final Property<String> infoTermsOfService;
+    final Property<String> infoSummary;
     final Property<String> infoContactEmail;
     final Property<String> infoContactName;
     final Property<String> infoContactUrl;
@@ -85,6 +86,7 @@ class Configs implements SmallryeOpenApiProperties {
         infoVersion = objects.property(String.class);
         infoDescription = objects.property(String.class);
         infoTermsOfService = objects.property(String.class);
+        infoSummary = objects.property(String.class);
         infoContactEmail = objects.property(String.class);
         infoContactName = objects.property(String.class);
         infoContactUrl = objects.property(String.class);
@@ -120,6 +122,7 @@ class Configs implements SmallryeOpenApiProperties {
         infoVersion = objects.property(String.class).convention(ext.getInfoVersion());
         infoDescription = objects.property(String.class).convention(ext.getInfoDescription());
         infoTermsOfService = objects.property(String.class).convention(ext.getInfoTermsOfService());
+        infoSummary = objects.property(String.class).convention(ext.getInfoSummary());
         infoContactEmail = objects.property(String.class).convention(ext.getInfoContactEmail());
         infoContactName = objects.property(String.class).convention(ext.getInfoContactName());
         infoContactUrl = objects.property(String.class).convention(ext.getInfoContactUrl());
@@ -180,6 +183,7 @@ class Configs implements SmallryeOpenApiProperties {
         addToPropertyMap(cp, OpenApiConstants.INFO_VERSION, infoVersion);
         addToPropertyMap(cp, OpenApiConstants.INFO_DESCRIPTION, infoDescription);
         addToPropertyMap(cp, OpenApiConstants.INFO_TERMS, infoTermsOfService);
+        addToPropertyMap(cp, OpenApiConstants.INFO_SUMMARY, infoSummary);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_EMAIL, infoContactEmail);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_NAME, infoContactName);
         addToPropertyMap(cp, OpenApiConstants.INFO_CONTACT_URL, infoContactUrl);
@@ -293,6 +297,10 @@ class Configs implements SmallryeOpenApiProperties {
 
     public Property<String> getInfoTermsOfService() {
         return infoTermsOfService;
+    }
+
+    public Property<String> getInfoSummary() {
+        return infoSummary;
     }
 
     public Property<String> getInfoContactEmail() {

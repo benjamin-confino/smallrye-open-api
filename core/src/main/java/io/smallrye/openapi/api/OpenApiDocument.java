@@ -143,6 +143,7 @@ public class OpenApiDocument {
         if (merged.getPaths() == null) {
             merged.setPaths(new PathsImpl());
         }
+
         if (merged.getInfo() == null) {
             merged.setInfo(new InfoImpl());
         }
